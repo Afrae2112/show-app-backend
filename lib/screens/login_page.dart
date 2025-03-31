@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'home_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:show_app_backend/config/api_config.dart';
-import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,41 +15,38 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
 
   Future<void> _login() async {
-    final email = _emailController.text;
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email and password are required!")),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+      body: jsonEncode({
+        'email': _emailController.text,
+        'password': _passwordController.text,
+      }),
     );
 
-    setState(() => _isLoading = false);
+    setState(() {
+      _isLoading = false;
+    });
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      final token = data['token'];
-      // Store token for future requests, e.g., using shared_preferences
-
+      // Store the token and navigate to the home page
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomePage()),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Invalid credentials!")),
-      );
+      setState(() {
+        _errorMessage = 'Invalid email or password';
+      });
     }
   }
 
@@ -75,6 +72,10 @@ class _LoginPageState extends State<LoginPage> {
               "Welcome to ShowApp",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
             ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 20),
+              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            ],
             const SizedBox(height: 40),
             TextField(
               controller: _emailController,
@@ -102,15 +103,15 @@ class _LoginPageState extends State<LoginPage> {
             _isLoading
                 ? const CircularProgressIndicator()
                 : ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.blueAccent,
-                      padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    ),
-                    onPressed: _login,
-                    child: const Text("Login", style: TextStyle(fontSize: 18)),
-                  ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.blueAccent,
+                padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              ),
+              onPressed: _login,
+              child: const Text("Login", style: TextStyle(fontSize: 18)),
+            ),
           ],
         ),
       ),
